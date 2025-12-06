@@ -1,0 +1,30 @@
+@startuml Диаграмма контекста
+title "C4. Контекст"
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+
+Person(student, "Студент", "Прохождение курсов, сдача тестов, получение отзывов и сертификатов.")
+Person(instructor, "Преподаватель", "Создание и редактирование курсов, мониторинг успеваемости студентов, предоставление обратной связи.")
+Person(admin, "Администратор", "Управление пользователями, курсами, доступами, статистика по курсам.")
+Person(support, "Техническая поддержка", "Решение технических проблем, обновление системы.")
+
+System(elearningSystem, "Система E-learning")
+
+System_Ext(emailService, "Почтовый сервис", "Отправка уведомлений пользователям")
+System_Ext(videoService, "Сервис видео", "Стриминг видео-материалов курсов")
+System_Ext(searchService, "Сервис поиска", "Поиск и каталогизация курсов")
+System_Ext(authService, "Сервис аутентификации", "Регистрация и вход пользователей")
+
+Rel(student, elearningSystem, "Прохождение курсов, сдача тестов")
+Rel(instructor, elearningSystem, "Создание курсов, мониторинг студентов")
+Rel(admin, elearningSystem, "Управление пользователями и курсами")
+Rel(support, elearningSystem, "Решение проблем, обновление системы")
+
+Rel(elearningSystem, emailService, "Отправка уведомлений")
+Rel(elearningSystem, videoService, "Стриминг видео")
+Rel(elearningSystem, searchService, "Поиск курсов")
+Rel(elearningSystem, authService, "Аутентификация пользователей")
+
+@enduml

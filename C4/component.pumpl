@@ -1,0 +1,35 @@
+@startuml API. Диаграмма компонентов
+title "C4. Компоненты - Сервис курсов"
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/common.puml
+
+Component(mysqlDB, "MySQL БД", "Хранение курсов и уроков")
+
+Component(apiGateway, "API Gateway")
+Component(redis, "Redis", "Кэширование")
+Component(rabbitMQ, "RabbitMQ", "Очередь задач")
+
+System_Ext(cloudflareStream, "Cloudflare Stream", "Видео-стриминг")
+
+Container_Boundary(courseService, "Сервис курсов (PHP/Laravel)") {
+  Component(controller, "Course Controller", "Обработка запросов")
+  Component(service, "Course Service", "Логика курсов")
+  Component(repository, "Course Repository", "Работа с БД")
+  Component(videoHandler, "Video Handler", "Работа с видео")
+  
+  controller --> service : "Вызывает методы"
+  service --> repository : "Запрашивает данные"
+  service --> videoHandler : "Обрабатывает видео"
+}
+
+apiGateway --> controller : "HTTP запросы"
+
+repository --> mysqlDB : "SQL запросы"
+service --> redis : "Кэширует данные"
+service --> rabbitMQ : "Отправляет задачи"
+
+videoHandler --> cloudflareStream : "API вызовы"
+
+@enduml

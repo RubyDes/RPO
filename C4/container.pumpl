@@ -1,0 +1,88 @@
+@startuml Диаграмма контейнеров
+title "C4. Контейнеры - Система E-learning"
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
+!include $ICONURL/devicons/react.puml
+!include $ICONURL/devicons/php.puml
+!include $ICONURL/devicons/mysql.puml
+!include $ICONURL/devicons/redis.puml
+
+Person(student, "Студент", "Прохождение курсов, сдача тестов, получение сертификатов")
+Person(instructor, "Преподаватель", "Создание курсов, мониторинг успеваемости, обратная связь")
+Person(admin, "Администратор", "Управление пользователями, курсами, статистикой")
+Person(support, "Техподдержка", "Решение технических проблем, обновление системы")
+
+System_Boundary(elearningSystem, "Система E-learning") {
+    Container(webApp, "Веб-приложение", "React/Next.js", "Интерфейс для студентов, преподавателей и администраторов", $sprite="react")
+    
+    Container(apiGateway, "API Gateway", "Nginx", "Шлюз для управления API вызовами и маршрутизацией")
+    
+    Container(authService, "Сервис авторизации", "PHP/Laravel", "Управление регистрацией, аутентификацией и ролями", $sprite="php")
+    Container(courseService, "Сервис курсов", "PHP/Laravel", "Создание, редактирование и управление курсами", $sprite="php")
+    Container(testingService, "Сервис тестирования", "PHP/Laravel", "Проведение тестов, проверка результатов", $sprite="php")
+    Container(videoService, "Сервис видео", "PHP/Laravel", "Управление видео-контентом курсов", $sprite="php")
+    Container(certificateService, "Сервис сертификатов", "PHP/Laravel", "Генерация и выдача сертификатов", $sprite="php")
+    Container(forumService, "Сервис форума", "PHP/Laravel", "Управление обсуждениями и коммуникацией", $sprite="php")
+    Container(notificationService, "Сервис уведомлений", "PHP/Laravel", "Отправка уведомлений пользователям", $sprite="php")
+    Container(analyticsService, "Сервис аналитики", "PHP/Laravel", "Сбор статистики и аналитика успеваемости", $sprite="php")
+    Container(searchService, "Сервис поиска", "PHP/Laravel", "Поиск и каталогизация курсов", $sprite="php")
+    
+    Container(messageQueue, "Очередь сообщений", "RabbitMQ", "Асинхронная обработка задач")
+    
+    Container(cacheRedis, "Кеш данных", "Redis", "Кэширование для ускорения доступа", $sprite="redis")
+    Container(sessionRedis, "Хранилище сессий", "Redis", "Хранение пользовательских сессий", $sprite="redis")
+    
+    Container(dbMain, "Основная база данных", "MySQL", "Хранение пользователей, курсов, прогресса", $sprite="mysql")
+    Container(dbAnalytics, "База аналитики", "MySQL", "Хранение статистики и метрик", $sprite="mysql")
+    Container(searchIndex, "Поисковый индекс", "Elasticsearch", "Индексация для быстрого поиска курсов")
+}
+
+System_Ext(emailService, "Почтовый сервис", "Отправка email-уведомлений")
+System_Ext(videoStreaming, "Cloudflare Stream", "Стриминг видео-контента")
+System_Ext(certAuthority, "Сервис ЭЦП", "Электронная подпись сертификатов")
+
+' === Взаимодействия пользователей ===
+student --> webApp : "Использует для обучения\nHTTP/HTTPS"
+instructor --> webApp : "Использует для преподавания\nHTTP/HTTPS"
+admin --> webApp : "Использует для администрирования\nHTTP/HTTPS"
+support --> webApp : "Доступ к админ-панели\nHTTP/HTTPS"
+
+' === API взаимодействия ===
+webApp --> apiGateway : "API вызовы\nHTTPS/REST"
+apiGateway --> authService : "API вызовы\nHTTPS/REST"
+apiGateway --> courseService : "API вызовы\nHTTPS/REST"
+apiGateway --> testingService : "API вызовы\nHTTPS/REST"
+apiGateway --> videoService : "API вызовы\nHTTPS/REST"
+apiGateway --> certificateService : "API вызовы\nHTTPS/REST"
+apiGateway --> forumService : "API вызовы\nHTTPS/REST"
+apiGateway --> notificationService : "API вызовы\nHTTPS/REST"
+apiGateway --> analyticsService : "API вызовы\nHTTPS/REST"
+apiGateway --> searchService : "API вызовы\nHTTPS/REST"
+
+' === Взаимодействия с базами данных ===
+authService --> dbMain : "Чтение/запись пользователей\nSQL"
+courseService --> dbMain : "Чтение/запись курсов\nSQL"
+testingService --> dbMain : "Чтение/запись тестов и результатов\nSQL"
+forumService --> dbMain : "Чтение/запись обсуждений\nSQL"
+certificateService --> dbMain : "Чтение/запись сертификатов\nSQL"
+
+analyticsService --> dbAnalytics : "Чтение/запись статистики\nSQL"
+searchService --> searchIndex : "Индексация и поиск\nREST"
+
+' === Кеширование ===
+authService --> sessionRedis : "Хранение сессий\nRedis"
+courseService --> cacheRedis : "Кеширование курсов\nRedis"
+searchService --> cacheRedis : "Кеширование результатов поиска\nRedis"
+
+' === Асинхронная обработка ===
+certificateService ---> messageQueue : "Задачи генерации сертификатов"
+notificationService ---> messageQueue : "Задачи отправки уведомлений"
+videoService ---> messageQueue : "Задачи обработки видео"
+
+' === Интеграции с внешними сервисами ===
+notificationService ---> emailService : "Отправка email\nSMTP/API"
+videoService ---> videoStreaming : "Стриминг видео\nAPI"
+certificateService ---> certAuthority : "Подпись сертификатов\nAPI"
+
+@enduml
