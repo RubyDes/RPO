@@ -1,0 +1,195 @@
+@startuml
+!define C4P https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master
+!includeurl C4P/C4_Container.puml
+
+title C4 Infrastructure Diagram - Система онлайн-обучения (E-learning)
+
+' ====== ОБЛАЧНАЯ ИНФРАСТРУКТУРА ======
+package "Облачный провайдер (Россия)" as cloud {
+    Container(cloudflare, "Cloudflare", "CDN + WAF", "Кэширование, защита от DDoS, стриминг видео")
+    
+    Container(nginx, "Nginx", "Nginx", "Обратный прокси и балансировщик нагрузки")
+    
+    package "Kubernetes Cluster" as k8s_cluster {
+        ' ====== ПОД АВТЕНТИФИКАЦИИ ======
+        package "Auth Pod" as auth_pod {
+            Container(keycloak, "Keycloak", "Java/Quarkus", "Identity Provider (OIDC/OAuth2)")
+        }
+        
+        ' ====== ПОД СЕРВИСОВ ОСНОВНОЙ ЛОГИКИ ======
+        package "Core Services Pod" as core_pod {
+            Container(user_service, "User Service", "PHP/Laravel", "Управление пользователями, ролями")
+            Container(course_service, "Course Service", "PHP/Laravel", "Управление курсами, уроками")
+            Container(content_service, "Content Service", "PHP/Laravel", "Управление учебными материалами")
+        }
+        
+        ' ====== ПОД ТЕСТИРОВАНИЯ ======
+        package "Testing Pod" as testing_pod {
+            Container(test_service, "Testing Service", "PHP/Laravel", "Управление тестами, вопросами")
+            Container(grading_service, "Grading Service", "PHP/Laravel", "Проверка тестов, выставление оценок")
+        }
+        
+        ' ====== ПОД КОММУНИКАЦИЙ ======
+        package "Communication Pod" as comm_pod {
+            Container(forum_service, "Forum Service", "PHP/Laravel", "Форумы курсов, обсуждения")
+            Container(notification_service, "Notification Service", "PHP/Laravel", "Уведомления, email/SMS")
+        }
+        
+        ' ====== ПОД СЕРТИФИКАЦИИ ======
+        package "Certificate Pod" as cert_pod {
+            Container(cert_service, "Certificate Service", "PHP/Laravel", "Генерация сертификатов (PDF)")
+        }
+        
+        ' ====== ПОД АНАЛИТИКИ ======
+        package "Analytics Pod" as analytics_pod {
+            Container(analytics_service, "Analytics Service", "PHP/Laravel", "Статистика, отчеты, аналитика")
+        }
+        
+        ' ====== ПОД ПОИСКА ======
+        package "Search Pod" as search_pod {
+            Container(search_service, "Search Service", "PHP/Laravel", "Поиск курсов, материалов")
+        }
+        
+        ' ====== ФРОНТЕНД ПОД ======
+        package "Frontend Pod" as frontend_pod {
+            Container(nextjs, "Next.js Frontend", "React/TypeScript", "SSR/SSG фронтенд приложение")
+        }
+        
+        ' ====== ОЧЕРЕДИ ЗАДАЧ ======
+        package "Queue Pod" as queue_pod {
+            Container(rabbitmq, "RabbitMQ", "Erlang", "Брокер сообщений для асинхронных задач")
+            Container(worker_service, "Worker Service", "PHP/Laravel Queue", "Обработка фоновых задач")
+        }
+        
+        ' ====== МОНИТОРИНГ ======
+        package "Monitoring Pod" as monitoring_pod {
+            Container(prometheus, "Prometheus", "Go", "Сбор метрик")
+            Container(grafana, "Grafana", "Go/React", "Визуализация метрик и дашборды")
+            Container(loki, "Loki", "Go", "Сбор и анализ логов")
+        }
+    }
+}
+
+' ====== ХРАНЕНИЕ ДАННЫХ ======
+package "Database Cluster" as database {
+    Container(mysql_primary, "MySQL Primary", "MySQL 8.0", "Основная база данных (InnoDB)")
+    Container(mysql_replica, "MySQL Replica", "MySQL 8.0", "Реплика для чтения")
+    Container(mysql_analytics, "MySQL Analytics", "MySQL 8.0", "База для аналитических запросов")
+    
+    note right of mysql_primary
+        Движок: InnoDB
+        Кодировка: utf8mb4
+        Репликация: Master-Slave
+        Резервное копирование: ежедневно
+    end note
+}
+
+' ====== КЭШИРОВАНИЕ ======
+package "Кэширование" as cache {
+    Container(redis_session, "Redis Session", "Redis", "Хранение сессий пользователей")
+    Container(redis_cache, "Redis Cache", "Redis", "Кэширование часто запрашиваемых данных")
+    Container(redis_queue, "Redis Queue", "Redis", "Хранение очередей задач")
+}
+
+' ====== ХРАНИЛИЩЕ ФАЙЛОВ ======
+package "File Storage" as storage {
+    Container(s3_storage, "S3-совместимое хранилище", "MinIO/Ceph", "Хранение файлов, документов, изображений")
+    Container(video_cdn, "Cloudflare Stream", "Видео CDN", "Стриминг видео, защита контента")
+}
+
+' ====== ВНЕШНИЕ СИСТЕМЫ ======
+System_Ext(email_provider, "SMTP Сервис", "Отправка email уведомлений")
+System_Ext(sms_provider, "SMS Gateway", "Отправка SMS уведомлений")
+System_Ext(payment_gateway, "Платежный шлюз (ЮKassa)", "Обработка платежей")
+System_Ext(ad_server, "Active Directory", "Корпоративная аутентификация")
+System_Ext(social_auth, "Social Auth Providers", "Google, Facebook, VK")
+System_Ext(cert_authority, "Удостоверяющий центр", "Электронная подпись сертификатов")
+
+' ====== ПОЛЬЗОВАТЕЛИ ======
+Person(student, "Студент", "Проходит курсы, сдает тесты")
+Person(teacher, "Преподаватель", "Создает курсы, проверяет задания")
+Person(admin, "Администратор", "Управляет системой")
+Person(support, "Техподдержка", "Мониторинг, обновления")
+
+' ====== ОСНОВНЫЕ СВЯЗИ ======
+' Пользователи -> Фронтенд
+Rel(student, cloudflare, "HTTPS", "443")
+Rel(teacher, cloudflare, "HTTPS", "443")
+Rel(admin, cloudflare, "HTTPS", "443")
+Rel(support, cloudflare, "HTTPS", "443")
+
+' CDN -> Прокси
+Rel(cloudflare, nginx, "HTTPS", "443")
+
+' Прокси -> Сервисы
+Rel(nginx, frontend_pod, "HTTP", "80")
+Rel(nginx, k8s_cluster, "HTTP", "80")
+
+' Фронтенд -> Бэкенд сервисы
+Rel(nextjs, user_service, "REST API", "HTTP/JSON")
+Rel(nextjs, course_service, "REST API", "HTTP/JSON")
+Rel(nextjs, test_service, "REST API", "HTTP/JSON")
+
+' Межсервисная коммуникация
+Rel(core_pod, rabbitmq, "AMQP", "5672")
+Rel(testing_pod, rabbitmq, "AMQP", "5672")
+Rel(comm_pod, rabbitmq, "AMQP", "5672")
+Rel(cert_pod, rabbitmq, "AMQP", "5672")
+
+' Сервисы -> Базы данных
+Rel(user_service, mysql_primary, "SQL", "3306")
+Rel(course_service, mysql_primary, "SQL", "3306")
+Rel(test_service, mysql_primary, "SQL", "3306")
+Rel(analytics_service, mysql_analytics, "SQL", "3306")
+
+' Репликация
+Rel(mysql_primary, mysql_replica, "Binlog Replication", "3306")
+
+' Кэширование
+Rel(user_service, redis_session, "Redis Protocol", "6379")
+Rel(course_service, redis_cache, "Redis Protocol", "6379")
+Rel(search_service, redis_cache, "Redis Protocol", "6379")
+
+' Хранение файлов
+Rel(content_service, s3_storage, "S3 API", "9000")
+Rel(content_service, video_cdn, "REST API", "443")
+
+' Аутентификация
+Rel(user_service, keycloak, "OIDC/OAuth2", "8080")
+Rel(nextjs, keycloak, "OIDC/OAuth2", "8080")
+
+' Внешние интеграции
+Rel(notification_service, email_provider, "SMTP", "587")
+Rel(notification_service, sms_provider, "REST API", "443")
+Rel(cert_service, cert_authority, "REST API", "443")
+Rel(keycloak, ad_server, "LDAP", "389")
+Rel(keycloak, social_auth, "OAuth2", "443")
+
+' Мониторинг
+Rel(prometheus, k8s_cluster, "Metrics Scrape", "9090")
+Rel(grafana, prometheus, "PromQL", "9090")
+Rel(grafana, loki, "LogQL", "3100")
+
+' Скрытые связи для группировки
+k8s_cluster ---[hidden]---> database
+k8s_cluster ---[hidden]---> cache
+k8s_cluster ---[hidden]---> storage
+
+' ====== ЛЕГЕНДА И ПРИМЕЧАНИЯ ======
+note bottom of cloud
+    <b>Инфраструктурные требования:</b>
+    • Локализация: РФ (152-ФЗ)
+    • Доступность: 99.7% (≤26ч простоя в год)
+    • Плановое ТО: вс 03:00-05:00 МСК
+    • RTO: ≤1 часа, RPO: ≤15 минут
+end note
+
+note right of k8s_cluster
+    <b>Kubernetes конфигурация:</b>
+    • Ingress: Nginx Controller
+    • Service Mesh: Istio/Linkerd (опционально)
+    • Autoscaling: HPA + Cluster Autoscaler
+    • GitOps: ArgoCD для развертывания
+end note
+
+@enduml
