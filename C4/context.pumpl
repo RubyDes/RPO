@@ -1,30 +1,63 @@
-@startuml Диаграмма контекста
-title "C4. Контекст"
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
 
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
-!$ICONURL = "https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/v3.0.0/icons"
-!include $ICONURL/common.puml
+title "C4. Контекст - Система онлайн-обучения"
 
-Person(student, "Студент", "Прохождение курсов, сдача тестов, получение отзывов и сертификатов.")
-Person(instructor, "Преподаватель", "Создание и редактирование курсов, мониторинг успеваемости студентов, предоставление обратной связи.")
-Person(admin, "Администратор", "Управление пользователями, курсами, доступами, статистика по курсам.")
-Person(support, "Техническая поддержка", "Решение технических проблем, обновление системы.")
+' === Основные пользователи ===
+Person(student, "Студент", "Проходит курсы, сдает тесты, просматривает видео")
+Person(instructor, "Преподаватель", "Создает курсы, загружает видео, проверяет тесты")
+Person(admin, "Администратор", "Управляет системой, пользователями, курсами")
+Person(support, "Техподдержка", "Мониторит систему, решает проблемы")
 
-System(elearningSystem, "Система E-learning")
+' === Система ===
+System(elearningSystem, "Платформа онлайн-обучения", "Обучение через курсы, тесты, видео")
 
-System_Ext(emailService, "Почтовый сервис", "Отправка уведомлений пользователям")
-System_Ext(videoService, "Сервис видео", "Стриминг видео-материалов курсов")
-System_Ext(searchService, "Сервис поиска", "Поиск и каталогизация курсов")
-System_Ext(authService, "Сервис аутентификации", "Регистрация и вход пользователей")
+' === Внешние системы согласно ADR ===
 
-Rel(student, elearningSystem, "Прохождение курсов, сдача тестов")
-Rel(instructor, elearningSystem, "Создание курсов, мониторинг студентов")
-Rel(admin, elearningSystem, "Управление пользователями и курсами")
-Rel(support, elearningSystem, "Решение проблем, обновление системы")
+' ADR 06.12.2025: Mux как видео-платформа (вместо Cloudflare Stream)
+System_Ext(muxService, "Mux", "Видео-платформа", "Обработка и стриминг видео")
 
-Rel(elearningSystem, emailService, "Отправка уведомлений")
-Rel(elearningSystem, videoService, "Стриминг видео")
-Rel(elearningSystem, searchService, "Поиск курсов")
-Rel(elearningSystem, authService, "Аутентификация пользователей")
+' ADR 18.12.2025: Pusher для коммуникаций
+System_Ext(pusherService, "Pusher", "WebSocket сервис", "Реальное время коммуникаций")
+
+' ADR 06.12.2025: Keycloak как Identity Provider
+System_Ext(keycloakService, "Keycloak", "Identity Provider", "Аутентификация и авторизация")
+
+' ADR 18.12.2025: Elasticsearch для поиска
+System_Ext(elasticsearchService, "Elasticsearch", "Поисковая система", "Поиск и индексация курсов")
+
+' ADR 06.12.2025: MySQL как основная БД (вместо PostgreSQL)
+System_Ext(mysqlService, "MySQL Database", "Система управления БД", "Хранение данных")
+
+' Дополнительные внешние системы
+System_Ext(emailService, "Почтовый сервис", "Отправка email уведомлений")
+System_Ext(paymentService, "Платежная система", "Обработка платежей за курсы")
+
+' === Связи пользователей с системой ===
+Rel(student, elearningSystem, "Использует для обучения\nHTTP/HTTPS")
+Rel(instructor, elearningSystem, "Использует для преподавания\nHTTP/HTTPS")
+Rel(admin, elearningSystem, "Использует для администрирования\nHTTP/HTTPS")
+Rel(support, elearningSystem, "Использует для мониторинга\nHTTP/HTTPS")
+
+' === Связи системы с внешними сервисами ===
+
+' Видео (согласно ADR)
+Rel(elearningSystem, muxService, "Стриминг видео контента\nMux API")
+
+' Коммуникации (согласно ADR)
+Rel(elearningSystem, pusherService, "Реальное время сообщений\nWebSocket API")
+
+' Аутентификация (согласно ADR)
+Rel(elearningSystem, keycloakService, "Аутентификация пользователей\nOAuth2/OpenID Connect")
+
+' Поиск (согласно ADR)
+Rel(elearningSystem, elasticsearchService, "Поиск курсов\nREST API")
+
+' База данных (согласно ADR)
+Rel(elearningSystem, mysqlService, "Хранение данных\nSQL")
+
+' Дополнительные связи
+Rel(elearningSystem, emailService, "Отправка уведомлений\nSMTP/API")
+Rel(elearningSystem, paymentService, "Обработка платежей\nAPI")
 
 @enduml
