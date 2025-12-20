@@ -1,7 +1,7 @@
 @startuml
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-title "C4. Компоненты - Сервис курсов (Laravel)"
+title "C4. Компоненты - Сервис курсов"
 
 ' === Стили ===
 skinparam component {
