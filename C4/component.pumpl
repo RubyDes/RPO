@@ -5,88 +5,74 @@ title "C4. Компоненты - Сервис курсов (Laravel)"
 
 ' === Стили ===
 skinparam component {
-    BackgroundColor<<Internal>> #E8F5E8
-    BackgroundColor<<External>> #F0F0F0
-    BackgroundColor<<Entity>> #FFF3E0
-    BorderColor<<External>> #999999
-    FontColor<<External>> #666666
+    BackgroundColor<<OurSystem>> #D4EDDA
+    BackgroundColor<<ExternalSystem>> #E9ECEF
+    BorderColor<<OurSystem>> #28A745
+    BorderColor<<ExternalSystem>> #6C757D
+    FontColor<<OurSystem>> #155724
+    FontColor<<ExternalSystem>> #495057
 }
 
-' === Контейнер: Сервис курсов ===
+' === НАША СИСТЕМА (ЗЕЛЕНЫЕ) ===
 Container_Boundary(courseServiceContainer, "Сервис курсов", "PHP/Laravel", "Управление курсами, уроками и видео") {
     
-    ' === Внутренние компоненты ===
-    Component(courseController, "CourseController", "REST API Controller", "Обработка HTTP запросов курсов", $tags="Internal")
-    Component(courseService, "CourseService", "Service Layer", "Бизнес-логика курсов", $tags="Internal")
-    Component(courseRepository, "CourseRepository", "Repository Pattern", "Доступ к данным курсов", $tags="Internal")
-    Component(videoManager, "VideoManager", "Video Management", "Управление видео контентом", $tags="Internal")
-    Component(progressTracker, "ProgressTracker", "Progress Tracking", "Отслеживание прогресса студентов", $tags="Internal")
+    ' === ВНУТРЕННИЕ КОМПОНЕНТЫ НАШЕЙ СИСТЕМЫ ===
+    Component(courseController, "CourseController", "REST API Controller", "Обработка HTTP запросов курсов", $tags="OurSystem")
+    Component(courseService, "CourseService", "Service Layer", "Бизнес-логика курсов", $tags="OurSystem")
+    Component(courseRepository, "CourseRepository", "Repository Pattern", "Доступ к данным курсов", $tags="OurSystem")
+    Component(videoManager, "VideoManager", "Video Management", "Управление видео контентом", $tags="OurSystem")
+    Component(progressTracker, "ProgressTracker", "Progress Tracking", "Отслеживание прогресса студентов", $tags="OurSystem")
     
-    ' === Сущности (Entities) ===
-    Component(courseEntity, "Course", "Сущность курса", "id, title, description, status", $tags="Entity")
-    Component(lessonEntity, "Lesson", "Сущность урока", "id, course_id, title, type, order", $tags="Entity")
-    Component(videoEntity, "Video", "Сущность видео", "id, lesson_id, mux_asset_id, duration", $tags="Entity")
-    Component(userProgressEntity, "UserProgress", "Прогресс", "user_id, course_id, status, score", $tags="Entity")
+    ' === СУЩНОСТИ НАШЕЙ СИСТЕМЫ ===
+    Component(courseEntity, "Course", "Сущность курса", "id, title, description, status", $tags="OurSystem")
+    Component(lessonEntity, "Lesson", "Сущность урока", "id, course_id, title, type, order", $tags="OurSystem")
+    Component(videoEntity, "Video", "Сущность видео", "id, lesson_id, mux_asset_id, duration", $tags="OurSystem")
+    Component(userProgressEntity, "UserProgress", "Прогресс", "user_id, course_id, status, score", $tags="OurSystem")
 }
 
-' === Внешние системы ===
-System_Ext(muxService, "Mux API", "Видео-платформа", $tags="External")
-System_Ext(keycloakService, "Keycloak", "Identity Provider", $tags="External")
-ComponentDb(mysqlDB, "MySQL Database", "Основная БД", $tags="External")
-ComponentDb(redisCache, "Redis Cache", "Кеш и сессии", $tags="External")
-Component(queueService, "RabbitMQ", "Очередь сообщений", $tags="External")
+' === ВНЕШНИЕ СИСТЕМЫ (СЕРЫЕ) ===
+System_Ext(muxService, "Mux API", "Видео-платформа", $tags="ExternalSystem")
+System_Ext(keycloakService, "Keycloak", "Identity Provider", $tags="ExternalSystem")
+ComponentDb(mysqlDB, "MySQL Database", "Основная БД", $tags="ExternalSystem")
+ComponentDb(redisCache, "Redis Cache", "Кеш и сессии", $tags="ExternalSystem")
+Component(queueService, "RabbitMQ", "Очередь сообщений", $tags="ExternalSystem")
 
-' === Внешние потребители API ===
-Component(apiGateway, "API Gateway", "Nginx/Traefik", $tags="External")
-Component(testingService, "Сервис тестирования", "Laravel", $tags="External")
-Component(supportService, "Сервис поддержки", "Laravel", $tags="External")
+' === ВНЕШНИЕ ПОТРЕБИТЕЛИ API ===
+Component(apiGateway, "API Gateway", "Nginx/Traefik", $tags="ExternalSystem")
+Component(testingService, "Сервис тестирования", "Laravel", $tags="ExternalSystem")
+Component(supportService, "Сервис поддержки", "Laravel", $tags="ExternalSystem")
 
-' === Входящие связи (API запросы) ===
+' === ВХОДЯЩИЕ СВЯЗИ (API запросы) ===
 apiGateway --> courseController : "REST API\n/api/courses/**"
 
-' === Внутренние связи сервиса ===
+' === ВНУТРЕННИЕ СВЯЗИ НАШЕЙ СИСТЕМЫ ===
 courseController --> courseService : "Вызывает бизнес-логику"
 courseService --> courseRepository : "Работает с данными"
 courseService --> videoManager : "Управление видео"
 courseService --> progressTracker : "Отслеживание прогресса"
 
-' === Связи репозитория ===
+' === СВЯЗИ РЕПОЗИТОРИЯ ===
 courseRepository --> mysqlDB : "SQL запросы\nCRUD операции"
 courseRepository --> courseEntity : "Маппинг на сущность"
 courseRepository --> lessonEntity : "Маппинг на сущность"
 courseRepository --> videoEntity : "Маппинг на сущность"
 
-' === Связи VideoManager ===
+' === СВЯЗИ VideoManager ===
 videoManager --> muxService : "API интеграция\nЗагрузка/получение видео"
 videoManager --> videoEntity : "Обновление метаданных"
 videoManager --> queueService : "Асинхронная обработка\nв очередь"
 
-' === Связи ProgressTracker ===
+' === СВЯЗИ ProgressTracker ===
 progressTracker --> userProgressEntity : "Обновление прогресса"
 progressTracker --> testingService : "Запрос результатов тестов"
 
-' === Аутентификация ===
+' === АУТЕНТИФИКАЦИЯ ===
 courseController --> keycloakService : "Проверка JWT токенов\nOAuth2"
 
-' === Кеширование ===
+' === КЕШИРОВАНИЕ ===
 courseService --> redisCache : "Кеширование курсов"
 
-' === Мониторинг и поддержка ===
+' === МОНИТОРИНГ И ПОДДЕРЖКА ===
 supportService --> courseService : "Запрос информации о курсах"
-
-' === Стилизация ===
-UpdateElementStyle(courseEntity, $bgColor="#FFF3E0")
-UpdateElementStyle(lessonEntity, $bgColor="#FFF3E0")
-UpdateElementStyle(videoEntity, $bgColor="#FFF3E0")
-UpdateElementStyle(userProgressEntity, $bgColor="#FFF3E0")
-
-UpdateElementStyle(muxService, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(keycloakService, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(mysqlDB, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(redisCache, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(queueService, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(apiGateway, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(testingService, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
-UpdateElementStyle(supportService, $bgColor="#F0F0F0", $borderColor="#999999", $fontColor="#666666")
 
 @enduml

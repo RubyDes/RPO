@@ -2,194 +2,176 @@
 !define C4P https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master
 !includeurl C4P/C4_Container.puml
 
-title C4 Infrastructure Diagram - Система онлайн-обучения (E-learning)
+title Infrastructure Diagram - Платформа онлайн-обучения
 
-' ====== ОБЛАЧНАЯ ИНФРАСТРУКТУРА ======
-package "Облачный провайдер (Россия)" as cloud {
-    Container(cloudflare, "Cloudflare", "CDN + WAF", "Кэширование, защита от DDoS, стриминг видео")
-    
-    Container(nginx, "Nginx", "Nginx", "Обратный прокси и балансировщик нагрузки")
-    
-    package "Kubernetes Cluster" as k8s_cluster {
-        ' ====== ПОД АВТЕНТИФИКАЦИИ ======
-        package "Auth Pod" as auth_pod {
-            Container(keycloak, "Keycloak", "Java/Quarkus", "Identity Provider (OIDC/OAuth2)")
-        }
-        
-        ' ====== ПОД СЕРВИСОВ ОСНОВНОЙ ЛОГИКИ ======
-        package "Core Services Pod" as core_pod {
-            Container(user_service, "User Service", "PHP/Laravel", "Управление пользователями, ролями")
-            Container(course_service, "Course Service", "PHP/Laravel", "Управление курсами, уроками")
-            Container(content_service, "Content Service", "PHP/Laravel", "Управление учебными материалами")
-        }
-        
-        ' ====== ПОД ТЕСТИРОВАНИЯ ======
-        package "Testing Pod" as testing_pod {
-            Container(test_service, "Testing Service", "PHP/Laravel", "Управление тестами, вопросами")
-            Container(grading_service, "Grading Service", "PHP/Laravel", "Проверка тестов, выставление оценок")
-        }
-        
-        ' ====== ПОД КОММУНИКАЦИЙ ======
-        package "Communication Pod" as comm_pod {
-            Container(forum_service, "Forum Service", "PHP/Laravel", "Форумы курсов, обсуждения")
-            Container(notification_service, "Notification Service", "PHP/Laravel", "Уведомления, email/SMS")
-        }
-        
-        ' ====== ПОД СЕРТИФИКАЦИИ ======
-        package "Certificate Pod" as cert_pod {
-            Container(cert_service, "Certificate Service", "PHP/Laravel", "Генерация сертификатов (PDF)")
-        }
-        
-        ' ====== ПОД АНАЛИТИКИ ======
-        package "Analytics Pod" as analytics_pod {
-            Container(analytics_service, "Analytics Service", "PHP/Laravel", "Статистика, отчеты, аналитика")
-        }
-        
-        ' ====== ПОД ПОИСКА ======
-        package "Search Pod" as search_pod {
-            Container(search_service, "Search Service", "PHP/Laravel", "Поиск курсов, материалов")
-        }
-        
-        ' ====== ФРОНТЕНД ПОД ======
-        package "Frontend Pod" as frontend_pod {
-            Container(nextjs, "Next.js Frontend", "React/TypeScript", "SSR/SSG фронтенд приложение")
-        }
-        
-        ' ====== ОЧЕРЕДИ ЗАДАЧ ======
-        package "Queue Pod" as queue_pod {
-            Container(rabbitmq, "RabbitMQ", "Erlang", "Брокер сообщений для асинхронных задач")
-            Container(worker_service, "Worker Service", "PHP/Laravel Queue", "Обработка фоновых задач")
-        }
-        
-        ' ====== МОНИТОРИНГ ======
-        package "Monitoring Pod" as monitoring_pod {
-            Container(prometheus, "Prometheus", "Go", "Сбор метрик")
-            Container(grafana, "Grafana", "Go/React", "Визуализация метрик и дашборды")
-            Container(loki, "Loki", "Go", "Сбор и анализ логов")
-        }
+left to right direction
+
+' ====== ПОЛЬЗОВАТЕЛИ ======
+Person(student, "Студент", "Проходит курсы")
+Person(teacher, "Преподаватель", "Создает курсы")
+Person(admin, "Администратор", "Управление")
+Person(support_agent, "Техподдержка", "Решение проблем")
+
+' ====== CDN И БЕЗОПАСНОСТЬ ======
+package "CDN и безопасность" as cdn_cluster {
+    Container(cloudflare, "Cloudflare", "CDN + WAF", "Кэширование, защита, SSL")
+    Container(nginx, "Nginx", "API Gateway", "Балансировщик нагрузки")
+}
+
+' ====== КЛАСТЕР ПРИЛОЖЕНИЙ ======
+package "Kubernetes Production Cluster" as k8s_cluster {
+    package "Frontend Services" {
+        Container(nextjs, "Next.js Frontend", "React/TypeScript", "Веб-приложение")
     }
-}
-
-' ====== ХРАНЕНИЕ ДАННЫХ ======
-package "Database Cluster" as database {
-    Container(mysql_primary, "MySQL Primary", "MySQL 8.0", "Основная база данных (InnoDB)")
-    Container(mysql_replica, "MySQL Replica", "MySQL 8.0", "Реплика для чтения")
-    Container(mysql_analytics, "MySQL Analytics", "MySQL 8.0", "База для аналитических запросов")
     
-    note right of mysql_primary
-        Движок: InnoDB
-        Кодировка: utf8mb4
-        Репликация: Master-Slave
-        Резервное копирование: ежедневно
-    end note
+    package "Authentication Services" {
+        Container(keycloak, "Keycloak", "Identity Provider", "Аутентификация")
+    }
+    
+    package "Business Services" {
+        Container(course_service, "Course Service", "PHP/Laravel", "Курсы")
+        Container(testing_service, "Testing Service", "PHP/Laravel", "Тестирование")
+        Container(user_service, "User Service", "PHP/Laravel", "Пользователи")
+        Container(forum_service, "Forum Service", "PHP/Laravel", "Форумы")
+    }
+    
+    package "Support Services" {
+        Container(support_service, "Support Service", "PHP/Laravel", "Техподдержка")
+        Container(analytics_service, "Analytics Service", "PHP/Laravel", "Статистика")
+        Container(certificate_service, "Certificate Service", "PHP/Laravel", "Сертификаты")
+    }
+    
+    Container(laravel_worker, "Worker Service", "PHP/Laravel", "Фоновые задачи")
 }
 
-' ====== КЭШИРОВАНИЕ ======
-package "Кэширование" as cache {
-    Container(redis_session, "Redis Session", "Redis", "Хранение сессий пользователей")
-    Container(redis_cache, "Redis Cache", "Redis", "Кэширование часто запрашиваемых данных")
-    Container(redis_queue, "Redis Queue", "Redis", "Хранение очередей задач")
+' ====== КЛАСТЕР ДАННЫХ ======
+package "Database Cluster" as db_cluster {
+    ContainerDb(mysql_primary, "MySQL Primary", "База данных", "Основное хранилище")
+    ContainerDb(mysql_replica, "MySQL Replica", "База данных", "Чтение")
+    ContainerDb(mysql_support, "Support DB", "База данных", "Техподдержка")
 }
 
-' ====== ХРАНИЛИЩЕ ФАЙЛОВ ======
-package "File Storage" as storage {
-    Container(s3_storage, "S3-совместимое хранилище", "MinIO/Ceph", "Хранение файлов, документов, изображений")
-    Container(video_cdn, "Cloudflare Stream", "Видео CDN", "Стриминг видео, защита контента")
+' ====== КЛАСТЕР КЭШИРОВАНИЯ ======
+package "Cache Cluster" as cache_cluster {
+    Container(redis_session, "Redis Session", "Redis", "Сессии")
+    Container(redis_cache, "Redis Cache", "Redis", "Кэш данных")
+    Container(redis_queue, "Redis Queue", "Redis", "Очереди задач")
+}
+
+' ====== КЛАСТЕР ХРАНИЛИЩА ======
+package "Storage Cluster" as storage_cluster {
+    Container(s3_storage, "S3 Storage", "MinIO", "Файлы и документы")
+    Container(backup_storage, "Backup Storage", "MinIO", "Резервные копии")
+}
+
+' ====== КЛАСТЕР ОЧЕРЕДЕЙ ======
+package "Message Queue Cluster" as mq_cluster {
+    Container(rabbitmq, "RabbitMQ", "Брокер сообщений", "Асинхронная коммуникация")
+}
+
+' ====== КЛАСТЕР МОНИТОРИНГА ======
+package "Monitoring Cluster" as monitoring_cluster {
+    Container(prometheus, "Prometheus", "Мониторинг", "Метрики")
+    Container(grafana, "Grafana", "Дашборды", "Визуализация")
+    Container(alertmanager, "Alertmanager", "Оповещения", "Уведомления инцидентов")
 }
 
 ' ====== ВНЕШНИЕ СИСТЕМЫ ======
-System_Ext(email_provider, "SMTP Сервис", "Отправка email уведомлений")
-System_Ext(sms_provider, "SMS Gateway", "Отправка SMS уведомлений")
-System_Ext(payment_gateway, "Платежный шлюз (ЮKassa)", "Обработка платежей")
-System_Ext(ad_server, "Active Directory", "Корпоративная аутентификация")
-System_Ext(social_auth, "Social Auth Providers", "Google, Facebook, VK")
-System_Ext(cert_authority, "Удостоверяющий центр", "Электронная подпись сертификатов")
+package "External Services" as external_cluster {
+    System_Ext(mux_video, "Mux Video", "Видео платформа")
+    System_Ext(pusher_service, "Pusher", "WebSocket сервис")
+    System_Ext(elasticsearch, "Elasticsearch", "Поиск курсов")
+    System_Ext(email_provider, "Email сервис", "Уведомления")
+    System_Ext(payment_gateway, "Платежный шлюз", "Оплата")
+    System_Ext(social_auth, "Социальные сети", "Вход")
+}
 
-' ====== ПОЛЬЗОВАТЕЛИ ======
-Person(student, "Студент", "Проходит курсы, сдает тесты")
-Person(teacher, "Преподаватель", "Создает курсы, проверяет задания")
-Person(admin, "Администратор", "Управляет системой")
-Person(support, "Техподдержка", "Мониторинг, обновления")
-
-' ====== ОСНОВНЫЕ СВЯЗИ ======
-' Пользователи -> Фронтенд
+' ====== СВЯЗИ ПОЛЬЗОВАТЕЛЕЙ ======
 Rel(student, cloudflare, "HTTPS", "443")
 Rel(teacher, cloudflare, "HTTPS", "443")
 Rel(admin, cloudflare, "HTTPS", "443")
-Rel(support, cloudflare, "HTTPS", "443")
+Rel(support_agent, cloudflare, "HTTPS", "443 (admin)")
 
-' CDN -> Прокси
+' ====== ТРАФИК ======
 Rel(cloudflare, nginx, "HTTPS", "443")
-
-' Прокси -> Сервисы
-Rel(nginx, frontend_pod, "HTTP", "80")
 Rel(nginx, k8s_cluster, "HTTP", "80")
 
-' Фронтенд -> Бэкенд сервисы
-Rel(nextjs, user_service, "REST API", "HTTP/JSON")
-Rel(nextjs, course_service, "REST API", "HTTP/JSON")
-Rel(nextjs, test_service, "REST API", "HTTP/JSON")
+' ====== ДОСТУП ТЕХПОДДЕРЖКИ ======
+Rel(support_agent, monitoring_cluster, "HTTP", "Мониторинг")
+Rel(support_agent, db_cluster, "SSH/Admin", "Администрирование")
 
-' Межсервисная коммуникация
-Rel(core_pod, rabbitmq, "AMQP", "5672")
-Rel(testing_pod, rabbitmq, "AMQP", "5672")
-Rel(comm_pod, rabbitmq, "AMQP", "5672")
-Rel(cert_pod, rabbitmq, "AMQP", "5672")
+' ====== ФРОНТЕНД -> СЕРВИСЫ ======
+Rel(nextjs, keycloak, "OIDC", "8080")
+Rel(nextjs, course_service, "REST API", "HTTP")
+Rel(nextjs, testing_service, "REST API", "HTTP")
+Rel(nextjs, user_service, "REST API", "HTTP")
+Rel(nextjs, forum_service, "REST API", "HTTP")
+Rel(nextjs, support_service, "REST API", "HTTP")
+Rel(nextjs, analytics_service, "REST API", "HTTP")
+Rel(nextjs, certificate_service, "REST API", "HTTP")
 
-' Сервисы -> Базы данных
-Rel(user_service, mysql_primary, "SQL", "3306")
+' ====== ВНЕШНИЕ ИНТЕГРАЦИИ ======
+Rel(course_service, mux_video, "API", "Видео")
+Rel(forum_service, pusher_service, "WebSocket", "Чаты")
+Rel(analytics_service, elasticsearch, "API", "Поиск")
+Rel(user_service, payment_gateway, "API", "Оплата")
+Rel(keycloak, social_auth, "OAuth2", "Социальный вход")
+
+' ====== БАЗЫ ДАННЫХ ======
 Rel(course_service, mysql_primary, "SQL", "3306")
-Rel(test_service, mysql_primary, "SQL", "3306")
-Rel(analytics_service, mysql_analytics, "SQL", "3306")
+Rel(testing_service, mysql_primary, "SQL", "3306")
+Rel(user_service, mysql_primary, "SQL", "3306")
+Rel(forum_service, mysql_primary, "SQL", "3306")
+Rel(support_service, mysql_support, "SQL", "3306")
+Rel(analytics_service, mysql_replica, "SQL", "3306")
 
-' Репликация
-Rel(mysql_primary, mysql_replica, "Binlog Replication", "3306")
+Rel(mysql_primary, mysql_replica, "Replication", "Бинарные логи")
 
-' Кэширование
-Rel(user_service, redis_session, "Redis Protocol", "6379")
-Rel(course_service, redis_cache, "Redis Protocol", "6379")
-Rel(search_service, redis_cache, "Redis Protocol", "6379")
+' ====== КЭШ И СЕССИИ ======
+Rel(user_service, redis_session, "Redis", "6379")
+Rel(course_service, redis_cache, "Redis", "6379")
+Rel(analytics_service, redis_cache, "Redis", "6379")
+Rel(support_service, redis_cache, "Redis", "6379")
 
-' Хранение файлов
-Rel(content_service, s3_storage, "S3 API", "9000")
-Rel(content_service, video_cdn, "REST API", "443")
+' ====== ОЧЕРЕДИ ======
+Rel(testing_service, redis_queue, "Redis", "6379")
+Rel(support_service, redis_queue, "Redis", "6379")
+Rel(laravel_worker, redis_queue, "Redis", "6379")
 
-' Аутентификация
-Rel(user_service, keycloak, "OIDC/OAuth2", "8080")
-Rel(nextjs, keycloak, "OIDC/OAuth2", "8080")
+Rel(testing_service, rabbitmq, "AMQP", "5672")
+Rel(support_service, rabbitmq, "AMQP", "5672")
 
-' Внешние интеграции
-Rel(notification_service, email_provider, "SMTP", "587")
-Rel(notification_service, sms_provider, "REST API", "443")
-Rel(cert_service, cert_authority, "REST API", "443")
-Rel(keycloak, ad_server, "LDAP", "389")
-Rel(keycloak, social_auth, "OAuth2", "443")
+' ====== РАБОТА С ОЧЕРЕДЯМИ ======
+Rel(laravel_worker, mysql_primary, "SQL", "3306")
+Rel(laravel_worker, rabbitmq, "AMQP", "5672")
 
-' Мониторинг
-Rel(prometheus, k8s_cluster, "Metrics Scrape", "9090")
+' ====== ХРАНИЛИЩЕ ======
+Rel(course_service, s3_storage, "S3 API", "9000")
+Rel(certificate_service, s3_storage, "S3 API", "9000")
+Rel(support_service, s3_storage, "S3 API", "9000")
+
+' ====== БЭКАПЫ ======
+Rel(mysql_primary, backup_storage, "Backup", "SFTP")
+Rel(s3_storage, backup_storage, "Replication", "S3 API")
+
+' ====== МОНИТОРИНГ ======
+Rel(prometheus, k8s_cluster, "HTTP", "Метрики сервисов")
+Rel(prometheus, db_cluster, "HTTP", "Метрики БД")
+Rel(prometheus, cache_cluster, "HTTP", "Метрики Redis")
 Rel(grafana, prometheus, "PromQL", "9090")
-Rel(grafana, loki, "LogQL", "3100")
+Rel(alertmanager, prometheus, "HTTP", "Оповещения")
 
-' Скрытые связи для группировки
-k8s_cluster ---[hidden]---> database
-k8s_cluster ---[hidden]---> cache
-k8s_cluster ---[hidden]---> storage
+' ====== EMAIL УВЕДОМЛЕНИЯ ======
+Rel(forum_service, email_provider, "SMTP", "587")
+Rel(alertmanager, email_provider, "SMTP", "587")
 
-' ====== ЛЕГЕНДА И ПРИМЕЧАНИЯ ======
-note bottom of cloud
-    <b>Инфраструктурные требования:</b>
-    • Локализация: РФ (152-ФЗ)
-    • Доступность: 99.7% (≤26ч простоя в год)
-    • Плановое ТО: вс 03:00-05:00 МСК
-    • RTO: ≤1 часа, RPO: ≤15 минут
-end note
-
-note right of k8s_cluster
-    <b>Kubernetes конфигурация:</b>
-    • Ingress: Nginx Controller
-    • Service Mesh: Istio/Linkerd (опционально)
-    • Autoscaling: HPA + Cluster Autoscaler
-    • GitOps: ArgoCD для развертывания
-end note
+' ====== ГРУППИРОВКИ ДЛЯ ЧИТАЕМОСТИ ======
+cdn_cluster -[hidden]-> k8s_cluster
+k8s_cluster -[hidden]-> db_cluster
+db_cluster -[hidden]-> cache_cluster
+cache_cluster -[hidden]-> storage_cluster
+storage_cluster -[hidden]-> mq_cluster
+mq_cluster -[hidden]-> monitoring_cluster
+monitoring_cluster -[hidden]-> external_cluster
 
 @enduml

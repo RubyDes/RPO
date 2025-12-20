@@ -1,63 +1,106 @@
 @startuml
 !theme vibrant
 
-package "Облачный Kubernetes" as k8s {
+title Maintenance / Deployment - Платформа онлайн-обучения
+
+package "Облачный Kubernetes (Yandex Cloud)" as k8s {
   [Docker] as docker << (C, #FFAAAA) >>
-  [Контейнеры сервисов] as containers << (C, #FFAAAA) >>
+  [Контейнеры микросервисов] as containers << (C, #FFAAAA) >>
 }
 
-package "Система E-learning - обслуживание" as maintenance {
+package "Система E-learning - Обслуживание" as maintenance {
     actor "Системный администратор" as sys_admin
+    actor "Техническая поддержка" as tech_support
     package "Облачная инфраструктура" as cloud {
       [Система мониторинга Prometheus] as monitoring_service << (C, #FFAAAA) >>
       [Система бэкапов Velero] as backup_service << (C, #FFAAAA) >>
+      [Дашборды Grafana] as grafana_service << (C, #FFAAAA) >>
+      [Логи Loki] as loki_service << (C, #FFAAAA) >>
+      [AlertManager] as alert_service << (C, #FFAAAA) >>
     }
 }
 
 package "Внешние сервисы" as outer_services {
-    package "Канал уведомлений" as notifications {
+    package "Каналы уведомлений" as notifications {
         [Почтовый сервис] as email_service << (C, #FFAAAA) >>
+        [Telegram Bot] as telegram_service << (C, #FFAAAA) >>
+        [Slack Webhook] as slack_service << (C, #FFAAAA) >>
     }
 }
 
-package "Разработка" as development {
+package "Разработка и развертывание" as development {
     actor "Разработчик" as developer
-    [GitLab] as vcs << (C, #FFAAAA) >>
-    [CI/CD GitLab (main)] as cicd << (C, #FFAAAA) >>
-    [CI/CD GitLab (develop)] as cicdtest << (C, #FFAAAA) >>
+    actor "DevOps инженер" as devops
     
-    package "CI/CD Pipeline (PROD)" as build {
-      [Build Stage] as buildstage << (C, #FFAAAA) >>
-      [Testing Stage] as testingstage << (C, #FFAAAA) >>
+    [Система контроля версий (GitLab)] as vcs << (C, #FFAAAA) >>
+    [CI/CD Pipeline (Production)] as cicd_prod << (C, #FFAAAA) >>
+    [CI/CD Pipeline (Staging)] as cicd_staging << (C, #FFAAAA) >>
+    
+    package "Этапы CI/CD Production" as prod_stages {
+      [Build Stage] as build_prod << (C, #FFAAAA) >>
+      [Testing Stage] as test_prod << (C, #FFAAAA) >>
+      [Security Scan] as security_prod << (C, #FFAAAA) >>
+      [Deploy to Production] as deploy_prod << (C, #FFAAAA) >>
     }
 
-    package "CI/CD Pipeline (TEST)" as buildtest {
-      [Build Stage Test] as buildstagetest << (C, #FFAAAA) >>
-      [Testing Stage Test] as testingstagetest << (C, #FFAAAA) >>
+    package "Этапы CI/CD Staging" as staging_stages {
+      [Build Stage Staging] as build_staging << (C, #FFAAAA) >>
+      [Testing Stage Staging] as test_staging << (C, #FFAAAA) >>
+      [Deploy to Staging] as deploy_staging << (C, #FFAAAA) >>
     }
 
-    [GitLab Container Registry] as containeregistry << (C, #FFAAAA) >>
+    [GitLab Container Registry] as container_registry << (C, #FFAAAA) >>
+    [ArgoCD GitOps] as argocd << (C, #FFAAAA) >>
+    [Helm Charts] as helm_charts << (C, #FFAAAA) >>
 }
 
-sys_admin --> monitoring_service : "Мониторинг состояния системы"
-sys_admin --> backup_service : "Контроль и восстановление данных"
-monitoring_service --> email_service : "Уведомления о сбоях и предупреждениях"
-developer --> vcs : "PUSH коммитов"
-vcs --> cicd : "CI/CD для PROD"
-vcs --> cicdtest : "CI/CD для dev"
-cicd --> buildstage : "Запуск pipeline"
-cicdtest --> buildstagetest : "Запуск pipeline"
-buildstage --> containeregistry : "Сборка Docker-образов и PUSH"
-buildstagetest --> containeregistry : "Сборка Docker-образов и PUSH"
-containeregistry <-- testingstage : "PULL Docker-образов"
-containeregistry <-- testingstagetest : "PULL Docker-образов"
-buildstage --> testingstage : "PASS"
-buildstagetest --> testingstagetest : "PASS"
-testingstage --> docker : "PULL обновлений [SSH] (Тэг main)"
-testingstagetest --> docker : "PULL обновлений [SSH] (Тэг dev)"
-docker --> containeregistry : "PULL Docker-образов"
-docker --> containers : "Обновление и развёртка контейнеров"
-monitoring_service --> containers : "Проверка состояния"
-backup_service --> containers : "Создание и восстановление бэкапов"
+sys_admin --> monitoring_service : "Мониторинг состояния системы\n(Prometheus UI)"
+sys_admin --> grafana_service : "Просмотр метрик и дашбордов\n(графики, тренды)"
+sys_admin --> loki_service : "Анализ логов приложений\n(поиск, фильтрация)"
+sys_admin --> alert_service : "Настройка алертов и уведомлений"
+sys_admin --> backup_service : "Контроль и восстановление данных\n(ручные бэкапы)"
+tech_support --> grafana_service : "Мониторинг доступности сервисов"
+tech_support --> loki_service : "Диагностика проблем пользователей"
+
+monitoring_service --> email_service : "Уведомления о критических сбоях"
+alert_service --> telegram_service : "Экстренные оповещения команде"
+alert_service --> slack_service : "Ежедневные отчеты и предупреждения"
+
+developer --> vcs : "PUSH коммитов\n(feature branches)"
+devops --> vcs : "Обновление конфигурации\n(K8s manifests, Helm)"
+vcs --> cicd_prod : "CI/CD для Production\n(ветка main)"
+vcs --> cicd_staging : "CI/CD для Staging\n(ветка develop)"
+
+cicd_prod --> build_prod : "Запуск production pipeline"
+cicd_staging --> build_staging : "Запуск staging pipeline"
+
+build_prod --> container_registry : "Сборка Docker-образов\n(тег: v1.x.x)"
+build_staging --> container_registry : "Сборка Docker-образов\n(тег: latest-dev)"
+
+container_registry <-- test_prod : "PULL Docker-образов для тестирования"
+container_registry <-- test_staging : "PULL Docker-образов для тестирования"
+
+build_prod --> test_prod : "PASS (успешная сборка)"
+build_staging --> test_staging : "PASS (успешная сборка)"
+
+test_prod --> security_prod : "PASS (тесты пройдены)"
+security_prod --> argocd : "PASS (безопасность проверена)"
+argocd --> docker : "GitOps синхронизация\n(автоматический деплой)"
+
+test_staging --> deploy_staging : "PASS (тесты пройдены)"
+deploy_staging --> docker : "Деплой в staging окружение"
+
+docker --> container_registry : "PULL Docker-образов\n(обновление контейнеров)"
+docker --> containers : "Обновление и развёртка контейнеров\n(Kubernetes pods)"
+
+monitoring_service --> containers : "Проверка состояния\n(health checks, probes)"
+grafana_service --> containers : "Сбор метрик приложений\n(/metrics endpoints)"
+loki_service --> containers : "Сбор логов приложений\n(STDOUT/STDERR)"
+
+backup_service --> containers : "Создание бэкапов состояния\n(volume snapshots)"
+backup_service --> container_registry : "Бэкап Docker образов"
+
+devops --> helm_charts : "Управление конфигурацией развертывания"
+helm_charts --> argocd : "Обновление манифестов"
 
 @enduml
